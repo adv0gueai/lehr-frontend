@@ -1,0 +1,60 @@
+# Outreach & Disqualification Analysis
+
+Based on a review of your database records and codebase ([outreach_worker.py](file:///f:/advogueAI/lehr-insurance/outreach_worker.py), [db.py](file:///f:/advogueAI/lehr-insurance/db.py), [main.py](file:///f:/advogueAI/lehr-insurance/main.py)), here are the answers to your questions:
+
+### 1. Main Objections
+From the leads marked with objections, the breakdown is:
+- **Disconnected / Voicemail / Hangup:** 26 leads 
+- **Not interested:** 11 leads
+- **Asked to call back later:** 5 leads
+- **Price hesitant:** 2 leads
+- **Already has coverage:** 1 lead
+
+*Observation:* The vast majority of "failed" contacts are people hanging up, not answering, or explicitly stating they are not interested right away without giving a specific reason.
+
+### 2. Disqualification Criteria
+Currently, 105 leads are marked as `Qualified: No`. 
+Based on analyzing the call summaries for these disqualified leads, the criteria is almost entirely **lack of engagement**:
+- **Unanswered / Voicemail:** The AI agent leaves a voicemail but the lead never provides the required information.
+- **Language Barriers / Refusals:** When a user does pick up (e.g., Tedy Cusme Macias, Carmen) but refuses to provide personal/insurance information or claims they already "got another one," the agent marks them as disqualified.
+- *In short: A lead is disqualified if the call ends without the AI successfully extracting the data needed for a quote.*
+
+### 3. Nurture Workflow After Pickup
+**Yes, but there is a flaw in the current logic.**
+Currently, if a user picks up the phone but does *not* book an appointment, **they are kept in the exact same aggressive outreach sequence**. 
+The system does *not* branch based on call outcomes. 
+
+The automated sequence **only stops** if:
+1. They reply to an SMS (`outreach_step = 100` triggers).
+2. They successfully book an appointment.
+
+### 4. Current Cadence (SMS, Call, Email)
+Yes, the workflow includes **SMS, Calls, AND Emails**. 
+It is a heavy, 24-step multi-touch sequence spanning several days, followed by a long-term loop.
+
+**Overview of Touchpoints:**
+- **SMS:** 9 touches
+- **Calls:** 11 touches
+- **Emails:** 4 touches
+
+**The First 24 Hours (Example Timing):**
+- **Immediate (Step 0):** SMS ("Hi {name}, this is Grace... Would you like to finish this here over text?")
+- **+ 5 mins (Step 1):** Phone Call
+- **+ 2 hours (Step 2):** Phone Call
+- **+ 10 mins (Step 3):** SMS ("Totally fine if now's busy. Are you looking for auto, home, or both?")
+- **+ 4 hours (Step 4):** Email ("I tried reaching you...")
+- **+ 2 hours (Step 5):** Phone Call
+
+**Days 2-4:** Switches to an "Absolute" schedule, calling and texting at specific times (e.g., 9:30 AM, 10:00 AM, 6:00 PM).
+**Long-term:** If they reach Step 22 (after ~4 days of intense follow-up), they enter a 14-day loop where they receive 1 Call and 1 SMS every two weeks indefinitely.
+
+### 5. Different Workflows for Scenarios?
+**No.** There is currently only ONE linear sequence. 
+- **New Inquiry:** Starts at Step 0.
+- **No Response:** Continues down the 24-step line.
+- **Picked Up (but no booking):** Continues down the exact same line. The AI might call them again 2 hours later as if nothing happened.
+- **Replied to SMS / Booked:** Sequence is immediately aborted.
+
+### Recommendations
+1. **Branch the Workflow:** Update [main.py](file:///f:/advogueAI/lehr-insurance/main.py)'s webhook handler so that if `call_successful == True`, the lead is moved to a different, softer [outreach_step](file:///f:/advogueAI/lehr-insurance/outreach_worker.py#30-119) (e.g., a "Post-Conversation Nurture" loop) rather than getting blasted with the standard "I tried reaching you" messages.
+2. **Dial Back Day 1:** 3 calls and 2 texts within the first 6 hours might be contributing to the high "User Hangup" and "Hostile" objection rates.
