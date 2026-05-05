@@ -1,0 +1,1 @@
+// This file ensures the components directory exists for migration. Remove after migration. 
