@@ -792,6 +792,26 @@ function CallsPageContent() {
 
   const handleSelectAppointment = (appt) => {
     setSelectedAppointment(appt);
+    // Keep right-panel analysis scoped to the appointment's lead instead of
+    // showing stale latestCall from the Calls stream selection.
+    const appointmentLead = {
+      uuid: appt?.lead_uuid || undefined,
+      phone_number: appt?.phone_number || undefined,
+      email: appt?.email || undefined,
+      full_legal_name: appt?.full_legal_name || undefined,
+    };
+    const appointmentLeadKey =
+      appointmentLead.uuid ||
+      appointmentLead.phone_number ||
+      appointmentLead.email ||
+      '';
+    selectedLeadKeyRef.current = appointmentLeadKey;
+    setSelectedLead(appointmentLead);
+    setLatestCall(null);
+    setLatestCallError('');
+    if (appointmentLeadKey) {
+      fetchLatestCall(appointmentLead);
+    }
   };
 
   const handleDayClick = (day) => {
