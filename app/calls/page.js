@@ -646,8 +646,12 @@ function CallsPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLead]);
 
-  // Auto-manage selected lead when the list changes
+  // Auto-manage selected lead when the list changes (Calls tab only).
+  // In Appointments tab, keep selectedLead scoped to the selected appointment.
   useEffect(() => {
+    if (activeSection !== 'calls') {
+      return;
+    }
     if (!leads || leads.length === 0) {
       setSelectedLead(null);
       setLatestCall(null);
@@ -668,7 +672,7 @@ function CallsPageContent() {
       fetchLatestCall(first);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leads]);
+  }, [leads, activeSection]);
 
   // Lazy-load leads when switching into Calls tab
   useEffect(() => {
