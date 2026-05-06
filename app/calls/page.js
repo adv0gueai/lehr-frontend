@@ -2139,6 +2139,11 @@ function CallsPageContent() {
                             lead.appointment_success === true ||
                             (lead.appointment_link && lead.appointment_link.length > 0) ||
                             (lead.appointment_data && lead.appointment_data.success === true);
+                          const appointmentBadgeValue = hasAppointment
+                            ? 'Yes'
+                            : (typeof lead.call_booked === 'string' && lead.call_booked.trim()
+                              ? lead.call_booked
+                              : (lead.appointment_success === false ? 'No' : 'No'));
                           const effectiveSuccess = hasAppointment || lead.call_successful;
                           return (
                             <button
@@ -2210,7 +2215,7 @@ function CallsPageContent() {
                                       {hasAppointment ? 'Booked' : effectiveSuccess ? 'Successful' : 'Failed'}
                                     </span>
                                   )}
-                                  {(hasAppointment || lead.call_booked) && (
+                                  {appointmentBadgeValue && (
                                     <span
                                       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-medium ${isSelected
                                         ? 'bg-slate-100/20 text-slate-100/90 dark:bg-slate-900/10 dark:text-slate-900'
@@ -2219,7 +2224,7 @@ function CallsPageContent() {
                                           : 'bg-slate-900/90 text-slate-100 dark:bg-slate-100/90 dark:text-slate-900'
                                         }`}
                                     >
-                                      {hasAppointment ? 'Appointment: Yes' : `Appointment: ${lead.call_booked}`}
+                                      {`Appointment: ${appointmentBadgeValue}`}
                                     </span>
                                   )}
                                 </div>
