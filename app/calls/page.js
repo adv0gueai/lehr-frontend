@@ -211,7 +211,7 @@ const createDefaultFilters = () => {
     leadUuid: '',
     phoneNumber: '',
     email: '',
-    appointmentSuccess: 'all', // 'all' | 'true' | 'false'
+    appointmentSuccess: 'true', // Calendar only shows booked appointments.
     bookedAt: todayYMD,
     createdFrom: '',
     createdTo: '',
@@ -337,9 +337,8 @@ function CallsPageContent() {
       if (effectiveFilters.email.trim()) {
         body.email = effectiveFilters.email.trim();
       }
-      if (effectiveFilters.appointmentSuccess !== 'all') {
-        body.appointment_success = effectiveFilters.appointmentSuccess === 'true';
-      }
+      // Calendar should never show failed/unbooked appointments.
+      body.appointment_success = true;
       if (effectiveFilters.bookedAt) {
         const formatted = formatBookedAtForApi(effectiveFilters.bookedAt);
         if (formatted) body.booked_at = formatted;
@@ -982,7 +981,7 @@ function CallsPageContent() {
                         filters.email ||
                         filters.createdFrom ||
                         filters.createdTo ||
-                        filters.appointmentSuccess !== 'all'
+                        filters.appointmentSuccess !== 'true'
                       ) && (
                           <span className="ml-1 inline-flex h-4 min-w-[1.25rem] items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-semibold text-white">
                             •
@@ -1099,52 +1098,8 @@ function CallsPageContent() {
                               <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
                                 Status
                               </label>
-                              <div className="inline-flex rounded-full bg-slate-100/80 p-0.5 text-[11px] dark:bg-slate-800/80">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setFilters((prev) => ({
-                                      ...prev,
-                                      appointmentSuccess: 'all',
-                                    }))
-                                  }
-                                  className={`flex-1 rounded-full px-2 py-1 font-medium transition-colors ${filters.appointmentSuccess === 'all'
-                                    ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-100'
-                                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
-                                    }`}
-                                >
-                                  All
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setFilters((prev) => ({
-                                      ...prev,
-                                      appointmentSuccess: 'true',
-                                    }))
-                                  }
-                                  className={`flex-1 rounded-full px-2 py-1 font-medium transition-colors ${filters.appointmentSuccess === 'true'
-                                    ? 'bg-white text-emerald-700 shadow-sm dark:bg-slate-900 dark:text-emerald-300'
-                                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
-                                    }`}
-                                >
-                                  Booked
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setFilters((prev) => ({
-                                      ...prev,
-                                      appointmentSuccess: 'false',
-                                    }))
-                                  }
-                                  className={`flex-1 rounded-full px-2 py-1 font-medium transition-colors ${filters.appointmentSuccess === 'false'
-                                    ? 'bg-white text-rose-700 shadow-sm dark:bg-slate-900 dark:text-rose-300'
-                                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
-                                    }`}
-                                >
-                                  Not booked
-                                </button>
+                              <div className="inline-flex rounded-full bg-emerald-100/80 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                                Booked only
                               </div>
                             </div>
 
