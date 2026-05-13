@@ -211,7 +211,7 @@ const createDefaultFilters = () => {
     leadUuid: '',
     phoneNumber: '',
     email: '',
-    appointmentSuccess: 'true', // Calendar only shows booked appointments.
+    appointmentSuccess: 'true', // 'all' | 'true' | 'false' — default: booked only (calendar + list)
     bookedAt: todayYMD,
     createdFrom: '',
     createdTo: '',
@@ -337,8 +337,9 @@ function CallsPageContent() {
       if (effectiveFilters.email.trim()) {
         body.email = effectiveFilters.email.trim();
       }
-      // Calendar should never show failed/unbooked appointments.
-      body.appointment_success = true;
+      if (effectiveFilters.appointmentSuccess !== 'all') {
+        body.appointment_success = effectiveFilters.appointmentSuccess === 'true';
+      }
       if (effectiveFilters.bookedAt) {
         const formatted = formatBookedAtForApi(effectiveFilters.bookedAt);
         if (formatted) body.booked_at = formatted;
@@ -613,23 +614,55 @@ function CallsPageContent() {
     }
   };
 
+  function handleSelectAppointment(appt) {
+    setSelectedAppointment(appt);
+    // Keep right-panel analysis scoped to the appointment's lead instead of
+    // showing stale latestCall from the Calls stream selection.
+    const appointmentLead = {
+      uuid: appt?.lead_uuid || undefined,
+      phone_number: appt?.phone_number || undefined,
+      email: appt?.email || undefined,
+      full_legal_name: appt?.full_legal_name || undefined,
+    };
+    const appointmentLeadKey =
+      appointmentLead.uuid ||
+      appointmentLead.phone_number ||
+      appointmentLead.email ||
+      '';
+    selectedLeadKeyRef.current = appointmentLeadKey;
+    setSelectedLead(appointmentLead);
+    setLatestCall(null);
+    setLatestCallError('');
+    if (appointmentLeadKey) {
+      fetchLatestCall(appointmentLead);
+    }
+  }
+
   // Auto-manage selected appointment when the list changes
   useEffect(() => {
     if (!appointments || appointments.length === 0) {
+      clearLatestCallPolling();
       setSelectedAppointment(null);
+      setSelectedLead(null);
+      setLatestCall(null);
+      setLatestCallError('');
       return;
     }
 
     if (!selectedAppointment) {
-      setSelectedAppointment(appointments[0]);
+      handleSelectAppointment(appointments[0]);
       return;
     }
 
     // If selected appointment is no longer in the list, fall back to first item
-    const stillExists = appointments.some((a) => a.id === selectedAppointment.id);
+    const stillExists = appointments.some(
+      (a) => String(a.id) === String(selectedAppointment.id)
+    );
     if (!stillExists) {
-      setSelectedAppointment(appointments[0]);
+      handleSelectAppointment(appointments[0]);
     }
+    // handleSelectAppointment mirrors row-click side effects (selectedLead + latest call).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointments, selectedAppointment]);
 
   useEffect(() => {
@@ -792,30 +825,6 @@ function CallsPageContent() {
 
     return { days, startOfMonth, endOfMonth };
   }, [currentMonth, selectedDate]);
-
-  const handleSelectAppointment = (appt) => {
-    setSelectedAppointment(appt);
-    // Keep right-panel analysis scoped to the appointment's lead instead of
-    // showing stale latestCall from the Calls stream selection.
-    const appointmentLead = {
-      uuid: appt?.lead_uuid || undefined,
-      phone_number: appt?.phone_number || undefined,
-      email: appt?.email || undefined,
-      full_legal_name: appt?.full_legal_name || undefined,
-    };
-    const appointmentLeadKey =
-      appointmentLead.uuid ||
-      appointmentLead.phone_number ||
-      appointmentLead.email ||
-      '';
-    selectedLeadKeyRef.current = appointmentLeadKey;
-    setSelectedLead(appointmentLead);
-    setLatestCall(null);
-    setLatestCallError('');
-    if (appointmentLeadKey) {
-      fetchLatestCall(appointmentLead);
-    }
-  };
 
   const handleDayClick = (day) => {
     if (!day || !day.ymd) return;
@@ -981,7 +990,7 @@ function CallsPageContent() {
                         filters.email ||
                         filters.createdFrom ||
                         filters.createdTo ||
-                        filters.appointmentSuccess !== 'true'
+                        filters.appointmentSuccess !== 'all'
                       ) && (
                           <span className="ml-1 inline-flex h-4 min-w-[1.25rem] items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-semibold text-white">
                             •
@@ -1098,8 +1107,52 @@ function CallsPageContent() {
                               <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
                                 Status
                               </label>
-                              <div className="inline-flex rounded-full bg-emerald-100/80 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                                Booked only
+                              <div className="inline-flex rounded-full bg-slate-100/80 p-0.5 text-[11px] dark:bg-slate-800/80">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setFilters((prev) => ({
+                                      ...prev,
+                                      appointmentSuccess: 'all',
+                                    }))
+                                  }
+                                  className={`flex-1 rounded-full px-2 py-1 font-medium transition-colors ${filters.appointmentSuccess === 'all'
+                                    ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-slate-100'
+                                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                                    }`}
+                                >
+                                  All
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setFilters((prev) => ({
+                                      ...prev,
+                                      appointmentSuccess: 'true',
+                                    }))
+                                  }
+                                  className={`flex-1 rounded-full px-2 py-1 font-medium transition-colors ${filters.appointmentSuccess === 'true'
+                                    ? 'bg-white text-emerald-700 shadow-sm dark:bg-slate-900 dark:text-emerald-300'
+                                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                                    }`}
+                                >
+                                  Booked
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setFilters((prev) => ({
+                                      ...prev,
+                                      appointmentSuccess: 'false',
+                                    }))
+                                  }
+                                  className={`flex-1 rounded-full px-2 py-1 font-medium transition-colors ${filters.appointmentSuccess === 'false'
+                                    ? 'bg-white text-rose-700 shadow-sm dark:bg-slate-900 dark:text-rose-300'
+                                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                                    }`}
+                                >
+                                  Not booked
+                                </button>
                               </div>
                             </div>
 
